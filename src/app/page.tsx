@@ -1,103 +1,207 @@
-import Image from "next/image";
+// app/page.tsx
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import KPICard from "@/components/cards/KPICard";
+import RevenueChart from "@/components/charts/RevenueChart";
+import { fetchDashboardData } from "@/lib/api";
+
+type DashboardData = {
+  totalSales: number;
+  totalOrders: number;
+  totalCustomers: number;
+  lowStockAlerts: number;
+  salesTrend: { labels: string[]; data: number[] };
+};
+
+const EMPTY: DashboardData = {
+  totalSales: 0,
+  totalOrders: 0,
+  totalCustomers: 0,
+  lowStockAlerts: 0,
+  salesTrend: { labels: [], data: [] },
+};
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [data, setData] = useState<DashboardData>(EMPTY);
+  const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState("7");
+  const [err, setErr] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false); // prevent hydration mismatch
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        setErr(null);
+        const res = await fetchDashboardData();
+        setData({
+          totalSales: Number(res?.totalSales ?? 0),
+          totalOrders: Number(res?.totalOrders ?? 0),
+          totalCustomers: Number(res?.totalCustomers ?? 0),
+          lowStockAlerts: Number(res?.lowStockAlerts ?? 0),
+          salesTrend: {
+            labels: res?.salesTrend?.labels ?? [],
+            data: res?.salesTrend?.data ?? [],
+          },
+        });
+      } catch {
+        setErr("Could not fetch dashboard data.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [range]);
+
+  // Let RevenueChart theme itself; only supply labels+data
+  const chartData = useMemo(
+    () => ({
+      labels: data.salesTrend.labels,
+      datasets: [
+        {
+          label: "Revenue",
+          data: data.salesTrend.data,
+          // No border/background colors here; RevenueChart reads CSS vars.
+        },
+      ],
+    }),
+    [data.salesTrend]
+  );
+
+  if (!mounted) {
+    // skeleton with theme tokens
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-44 rounded bg-muted animate-pulse" />
+          <div className="h-10 w-36 rounded bg-muted animate-pulse" />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-28 rounded-xl bg-muted animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="h-80 rounded-xl bg-muted animate-pulse" />
+          <div className="h-80 rounded-xl bg-muted animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          Dashboard
+        </h1>
+
+        <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+          Range
+          <select
+            value={range}
+            onChange={(e) => setRange(e.target.value)}
+            className="
+              bg-card text-foreground border border-border
+              rounded-lg px-4 py-2
+              focus:outline-none focus:ring-2 focus:ring-primary
+              shadow-sm
+            "
+          >
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+            <option value="90">90 days</option>
+          </select>
+        </label>
+      </div>
+
+      {/* Error */}
+      {err && (
+        <div className="bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20 px-4 py-3 rounded-md">
+          {err}
+        </div>
+      )}
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KPICard
+          title="Total Sales"
+          value={data.totalSales}
+          icon="💰"
+          trend={{ value: 12.5, isPositive: true }}
+          loading={loading}
+        />
+        <KPICard
+          title="Total Orders"
+          value={data.totalOrders}
+          icon="📦"
+          trend={{ value: 8.2, isPositive: true }}
+          loading={loading}
+        />
+        <KPICard
+          title="Total Customers"
+          value={data.totalCustomers}
+          icon="👥"
+          trend={{ value: 5.7, isPositive: true }}
+          loading={loading}
+        />
+        <KPICard
+          title="Low Stock Alerts"
+          value={data.lowStockAlerts}
+          icon="⚠️"
+          trend={{ value: 3.1, isPositive: false }}
+          loading={loading}
+        />
+      </div>
+
+      {/* Charts + stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Revenue chart */}
+        <div className="bg-card text-card-foreground shadow-lg rounded-2xl p-6 border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Revenue Trends</h2>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Weekly</span>
+              <span className="w-2 h-2 bg-primary rounded-full" />
+            </div>
+          </div>
+          {loading ? (
+            <div className="h-64 bg-muted animate-pulse rounded-lg" />
+          ) : data.salesTrend.labels.length ? (
+            <RevenueChart data={chartData} />
+          ) : (
+            <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
+              No data
+            </div>
+          )}
+        </div>
+
+        {/* Performance metrics */}
+        <div className="bg-card text-card-foreground shadow-lg rounded-2xl p-6 border border-border">
+          <h2 className="text-xl font-semibold mb-6">Performance Metrics</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Conversion Rate</span>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">4.8%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Average Order Value</span>
+              <span className="font-semibold text-primary">₹2,450</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Customer Satisfaction</span>
+              <span className="font-semibold text-yellow-600 dark:text-yellow-400">92%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Return Rate</span>
+              <span className="font-semibold text-red-600 dark:text-red-400">2.1%</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
